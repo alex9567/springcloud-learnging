@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
 @SpringBootApplication
 @RestController
 //动态刷新，需要post访问http://localhost:8881/actuator/refresh
+//如果是多个服务注册，就要依次刷新每个端口
 @RefreshScope
 public class ConfigClientApplication {
 

@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @SpringBootApplication
 @RestController
-//动态刷新
+//动态刷新，需要post访问http://localhost:8881/actuator/refresh
 @RefreshScope
 public class ConfigClientApplication {
 

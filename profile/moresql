@@ -1,0 +1,122 @@
+import com.alibaba.druid.pool.DruidDataSource;
+import com.alibaba.nacos.api.config.annotation.NacosValue;
+import com.alibaba.nacos.spring.context.annotation.config.NacosPropertySource;
+import com.github.pagehelper.PageInterceptor;
+import com.github.pagehelper.autoconfigure.PageHelperProperties;
+import com.google.common.base.Joiner;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.ibatis.plugin.Interceptor;
+import org.apache.ibatis.session.SqlSessionFactory;
+import org.mybatis.spring.SqlSessionFactoryBean;
+import org.mybatis.spring.SqlSessionTemplate;
+import org.mybatis.spring.annotation.MapperScan;
+import org.mybatis.spring.boot.autoconfigure.MybatisProperties;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
+
+import javax.annotation.Resource;
+import javax.sql.DataSource;
+import java.util.Properties;
+
+/**
+ * 数据库相关配置
+ *
+ * @author chen
+ */
+@Slf4j
+@Configuration
+@NacosPropertySource(dataId = "chen", groupId = "chen")
+@MapperScan(basePackages = "com.chen.basic.dao.mapper",
+        sqlSessionTemplateRef = "basicSqlSessionTemplate",
+        sqlSessionFactoryRef = "basicSqlSessionFactory")
+@EnableConfigurationProperties(PageHelperProperties.class)
+public class BasicDataSourceConfig {
+
+
+    @Autowired
+    private PageHelperProperties pageHelperProperties;
+    @Resource
+    private MybatisProperties mapperLocations;
+
+    /**
+     * 使用声明的数据源，创建sqlSession工厂
+     */
+    @Bean(value = "basicSqlSessionFactory")
+    @Primary
+    public SqlSessionFactory basicSqlSessionFactory() throws Exception {
+        SqlSessionFactoryBean bean = new SqlSessionFactoryBean();
+        bean.setDataSource(basicDataSource());
+        bean.setMapperLocations(
+                new PathMatchingResourcePatternResolver().getResources(Joiner.on(",").join(mapperLocations.getMapperLocations())));
+//        bean.setTypeAliasesPackage(mapperLocations.getTypeAliasesPackage());
+        //分页插件
+        Interceptor interceptor = new PageInterceptor();
+        Properties pageHelperProps = pageHelperProperties.getProperties();
+        interceptor.setProperties(pageHelperProps);
+        bean.setPlugins(new Interceptor[] {interceptor});
+        return bean.getObject();
+    }
+
+    /**
+     * 声明数据源有自己的事务管理
+     */
+    @Bean(value = "basicTransactionManager")
+    @Primary
+    public DataSourceTransactionManager basicTransactionManager() {
+        return new DataSourceTransactionManager(basicDataSource());
+    }
+
+    /**
+     * 声明SqlSessionTemplate由指定的SqlSession工厂创建
+     */
+    @Bean(value = "basicSqlSessionTemplate")
+    @Primary
+    public SqlSessionTemplate basicSqlSessionTemplate() throws Exception {
+        return new SqlSessionTemplate(basicSqlSessionFactory());
+    }
+
+
+    @Bean(value = "basicDataSource")
+    @Primary
+    public DataSource basicDataSource() {
+        DruidDataSource dataSource = new DruidDataSource();
+        dataSource.setDriverClassName(driverClassName);
+        dataSource.setUrl(url);
+        dataSource.setUsername(userName);
+        dataSource.setPassword(password);
+        dataSource.setInitialSize(initialSize);
+        dataSource.setMinIdle(minIdle);
+        dataSource.setMaxWait(maxWait);
+        dataSource.setMaxActive(maxActive);
+        return dataSource;
+    }
+
+    @NacosValue(value = "${data.source.url}", autoRefreshed = false)
+    private String url;
+
+    @NacosValue(value = "${data.source.userName}", autoRefreshed = false)
+    private String userName;
+
+    @NacosValue(value = "${data.source.password}", autoRefreshed = false)
+    private String password;
+
+    @NacosValue(value = "${data.source.initialSize:8}", autoRefreshed = false)
+    private int initialSize;
+
+    @NacosValue(value = "${data.source.minIdle:8}", autoRefreshed = false)
+    private int minIdle;
+
+    @NacosValue(value = "${data.source.maxWait:6000}", autoRefreshed = false)
+    private Long maxWait;
+
+    @NacosValue(value = "${data.source.driverClassName}", autoRefreshed = false)
+    private String driverClassName;
+
+    @NacosValue(value = "${data.source.maxActive:20}", autoRefreshed = false)
+    private int maxActive;
+}
